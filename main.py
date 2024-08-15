@@ -247,7 +247,7 @@ def main():
                 except SQLAlchemyError as e:
                     session.rollback()
                     logger.error(
-                        f"Error saving student {student['student_number']} to database: {str(e)}"
+                        f"{total_students_saved})Error saving student {student['student_number']} to database: {str(e)}"
                     )
 
                 total_students_processed += 1
