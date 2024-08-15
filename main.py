@@ -196,8 +196,9 @@ def main():
                     continue
 
                 names = student["name"].split()
-                first_name = names[0]
-                surname = " ".join(names[1:])
+                reversed_names = names[::-1]
+                surname = reversed_names[0]
+                first_name = " ".join(reversed_names[1:])
 
                 try:
                     cgpa_float = float(cgpa)
