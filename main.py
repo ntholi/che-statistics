@@ -209,8 +209,8 @@ def main():
                     overall_exam_mark = None
 
                 new_student = Student(
-                    academic_year=academic_year,
                     student_number=int(student["student_number"]),
+                    academic_year=academic_year,
                     first_name=first_name,
                     surname=surname,
                     date_of_birth=birthdate,
@@ -232,6 +232,12 @@ def main():
                 )
 
                 try:
+                    exists = session.query(Student).get(new_student.student_number)
+                    if exists:
+                        logger.warning(
+                            f"Student {student['student_number']} already exists in the database, skipping"
+                        )
+                        continue
                     session.add(new_student)
                     session.commit()
                     total_students_saved += 1

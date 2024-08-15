@@ -8,9 +8,8 @@ Base = declarative_base()
 class Student(Base):
     __tablename__ = "students"
 
-    id = Column(Integer, primary_key=True)
+    student_number = Column(Integer, primary_key=True)
     academic_year = Column(Integer)
-    student_number = Column(Integer, unique=True)
     first_name = Column(String)
     surname = Column(String)
     date_of_birth = Column(String)
