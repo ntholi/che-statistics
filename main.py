@@ -235,7 +235,7 @@ def main():
                     exists = session.query(Student).get(new_student.student_number)
                     if exists:
                         logger.warning(
-                            f"Student {student['student_number']} already exists in the database, skipping"
+                            f"{total_students_saved}) Student {student['student_number']} already exists in the database, skipping"
                         )
                         continue
                     session.add(new_student)
@@ -247,7 +247,7 @@ def main():
                 except SQLAlchemyError as e:
                     session.rollback()
                     logger.error(
-                        f"{total_students_saved})Error saving student {student['student_number']} to database: {str(e)}"
+                        f"{total_students_saved}) Error saving student {student['student_number']} to database: {str(e)}"
                     )
 
                 total_students_processed += 1
