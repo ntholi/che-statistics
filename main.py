@@ -226,7 +226,7 @@ def main():
                     overall_exam_mark=overall_exam_mark,
                     graduate_status="Not Graduated",
                     type_of_main_sponsor=(
-                        "NMDS" if asst_provider == "Government" else "Other"
+                        "Government" if asst_provider == "NMDS" else "Other"
                     ),
                     name_of_main_sponsor=asst_provider,
                 )
