@@ -21,7 +21,7 @@ class Student(Base):
     number_of_sponsors = Column(Integer, default=1)
     type_of_main_sponsor = Column(String)
     name_of_main_sponsor = Column(String)
-    faculty = Column(String)
+    faculty_or_school = Column(String)
     program = Column(String)
     duration_of_program = Column(Integer)
     year_of_study = Column(Integer)

@@ -153,6 +153,22 @@ class WebScraper:
             return ""  # Default value in case of error
 
 
+def get_faculty_or_school(code):
+    faculty_map = {
+        "FAID": "Faculty of Architecture and the Built Environment",
+        "FBS": "Faculty of Business and Globalization",
+        "FCM": "Faculty of Communication, Media and Broadcasting",
+        "FCO": "Faculty of Communication, Media and Broadcasting",
+        "FCTH": "Faculty of Creativity in Tourism & Hospitality",
+        "FDSI": "Faculty of Design and Innovation",
+        "FFLD": "Faculty of Design and Innovation",
+        "FFTB": "Faculty of Communication, Media and Broadcasting",
+        "FINT": "Faculty of Information & Communication Technology",
+        "FMS": "Faculty of Communication, Media and Broadcasting",
+    }
+    return faculty_map.get(code, "Unknown")
+
+
 def main():
     scraper = WebScraper()
     session = Session()
@@ -217,7 +233,7 @@ def main():
                     date_of_birth=birthdate,
                     gender=sex,
                     nationality=nationality,
-                    faculty=student["school"],
+                    faculty_or_school=get_faculty_or_school(student["school"]),
                     program=program,
                     duration_of_program=(
                         3 if program and program.startswith("Diploma") else 4
