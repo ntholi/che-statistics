@@ -43,6 +43,10 @@ class Student(Base):
     fee_meals_actual = Column(Float, default=1300.00)
     fee_lumpsum = Column(Float, default=7400.00)
     fee_lumpsum_actual = Column(Float, default=7400.00)
+    other_fees1_description = Column(String, default="Laptop allowance")
+    other_fees1_value = Column(Float, default=5000.00)
+    other_fees2_description = Column(String, default="Data allowance")
+    other_fees2_value = Column(Float, default=50.00)
 
 
 engine = create_engine("postgresql://dev:111111@localhost/cms")
