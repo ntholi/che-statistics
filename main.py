@@ -170,17 +170,17 @@ def get_faculty_or_school(code):
 
 
 def get_duration_of_program(program: str):
-    if program.startswith("Diploma"):
+    if "diploma" in program.lower() or "associate" in program.lower():
         return 3
-    elif program.startswith("Certificate"):
+    elif "certificate" in program.lower():
         return 1
     return 4
 
 
 def get_qualification(program: str):
-    if program.startswith("Certificate"):
+    if "diploma" in program.lower() or "associate" in program.lower():
         return 1
-    elif program.startswith("Diploma"):
+    elif "certificate" in program.lower():
         return 2
     return 3
 
@@ -207,7 +207,13 @@ def get_tuition_fee(qualification: int, year_of_study: int):
 
 def main():
     scraper = WebScraper()
+    scraper.browser.login()
     session = Session()
+
+    # Filter:
+    scraper.browser.fetch(
+        "https://cmslesothosandbox.limkokwing.net/campus/registry/r_studentviewlist.php?x_InstitutionID=1&z_InstitutionID=%3D%2C%2C&x_LatestTerm=2022-08&z_LatestTerm=LIKE%2C%27%25%2C%25%27"
+    )
 
     student_list_url = f"{BASE_URL}/r_studentviewlist.php"
     page_number = 1
