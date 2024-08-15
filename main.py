@@ -252,7 +252,7 @@ def main():
                     )
 
             if next_page:
-                student_list_url = urljoin(BASE_URL, next_page)
+                student_list_url = f"{BASE_URL}/{next_page}"
                 page_number += 1
             else:
                 student_list_url = None
