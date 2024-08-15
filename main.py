@@ -74,9 +74,10 @@ class WebScraper:
                 logger.warning(f"CGPA information not found for student {student_id}")
                 cgpa = None
 
-            semester_td = soup.find("td", string="Semester:")
-            if semester_td:
-                semester_text = semester_td.find_next("td").text
+            semester_tds = soup.find_all("td", string="Semester:")
+            if semester_tds:
+                last_semester_td = semester_tds[-1]
+                semester_text = last_semester_td.find_next("td").text
                 academic_year = int(semester_text.split(",")[1].split()[1])
             else:
                 logger.warning(
