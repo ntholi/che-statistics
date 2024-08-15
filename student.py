@@ -11,7 +11,7 @@ class Student(Base):
     institution_name = Column(
         String, default="Limkokwing University of Creative Technology"
     )
-    academic_year = Column(Integer)
+    academic_year = Column(String)
     student_number = Column(Integer, primary_key=True)
     first_name = Column(String)
     surname = Column(String)
@@ -23,10 +23,10 @@ class Student(Base):
     name_of_main_sponsor = Column(String)
     faculty_or_school = Column(String)
     program = Column(String)
-    duration_of_program = Column(Integer)
+    duration_on_program = Column(Integer)
     year_of_study = Column(Integer)
-    qualification = Column(String, default="")
-    level_of_study = Column(String, default="")
+    qualification = Column(Integer)
+    level_of_study = Column(String, default="UnderGraduate")
     residential_status = Column(String, default="Off-Campus")
     student_status = Column(String)
     mode_of_study = Column(String, default="Fulltime")

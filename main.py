@@ -169,6 +169,29 @@ def get_faculty_or_school(code):
     return faculty_map.get(code, "Unknown")
 
 
+def get_duration_of_program(program: str):
+    if program.startswith("Diploma"):
+        return 3
+    elif program.startswith("Certificate"):
+        return 1
+    return 4
+
+
+def get_qualification(program: str):
+    if program.startswith("Diploma"):
+        return 1
+    elif program.startswith("Certificate"):
+        return 2
+    return 3
+
+
+def get_student_status(program: str, year_of_study: int):
+    program_duration = get_duration_of_program(program)
+    if year_of_study == program_duration:
+        return "Completer"
+    return "Continuing Student"
+
+
 def main():
     scraper = WebScraper()
     session = Session()
@@ -218,7 +241,7 @@ def main():
 
                 try:
                     cgpa_float = float(cgpa)
-                    overall_exam_mark = int(cgpa_float * 20)
+                    overall_exam_mark = int(cgpa_float * 25)
                 except ValueError:
                     logger.warning(
                         f"Invalid CGPA value for student {student['student_number']}: {cgpa}"
@@ -227,7 +250,7 @@ def main():
 
                 new_student = Student(
                     student_number=int(student["student_number"]),
-                    academic_year=academic_year,
+                    academic_year="2023/2024",
                     first_name=first_name,
                     surname=surname,
                     date_of_birth=birthdate,
@@ -235,13 +258,16 @@ def main():
                     nationality=nationality,
                     faculty_or_school=get_faculty_or_school(student["school"]),
                     program=program,
-                    duration_of_program=(
-                        3 if program and program.startswith("Diploma") else 4
-                    ),
+                    duration_on_program=get_duration_of_program(program),
                     year_of_study=academic_year,
-                    student_status=student["student_status"],
+                    qualification=get_qualification(program),
+                    student_status=get_student_status(program, academic_year),
                     overall_exam_mark=overall_exam_mark,
-                    graduate_status="Not Graduated",
+                    graduate_status=(
+                        "Passed"
+                        if overall_exam_mark and overall_exam_mark >= 50
+                        else "Failed"
+                    ),
                     type_of_main_sponsor=(
                         "Government" if asst_provider == "NMDS" else "Other"
                     ),
