@@ -33,7 +33,7 @@ class Student(Base):
     disability = Column(String, default="N/A")
     overall_exam_mark = Column(Integer)
     graduate_status = Column(String)
-    fees_applicable = Column(Integer, default=2)
+    fees_applicable = Column(Integer, default=200)
     fees_registration = Column(Integer, default=1)
     fees_tuition = Column(Float)
     fee_books = Column(Integer, default=1)

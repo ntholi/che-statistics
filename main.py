@@ -178,9 +178,9 @@ def get_duration_of_program(program: str):
 
 
 def get_qualification(program: str):
-    if program.startswith("Diploma"):
+    if program.startswith("Certificate"):
         return 1
-    elif program.startswith("Certificate"):
+    elif program.startswith("Diploma"):
         return 2
     return 3
 
@@ -190,6 +190,19 @@ def get_student_status(program: str, year_of_study: int):
     if year_of_study == program_duration:
         return "Completer"
     return "Continuing Student"
+
+
+def get_tuition_fee(qualification: int, year_of_study: int):
+    if qualification == 1 and year_of_study == 1:
+        return 12000
+    elif qualification == 2 and year_of_study == 1:
+        return 19475
+    elif qualification == 2 and year_of_study >= 2:
+        return 19988
+    elif qualification == 3 and year_of_study == 1:
+        return 19988
+    elif qualification == 3 and year_of_study >= 2:
+        return 25625
 
 
 def main():
@@ -267,6 +280,9 @@ def main():
                         "Passed"
                         if overall_exam_mark and overall_exam_mark >= 50
                         else "Failed"
+                    ),
+                    fees_tuition=get_tuition_fee(
+                        get_qualification(program), academic_year
                     ),
                     type_of_main_sponsor=(
                         "Government" if asst_provider == "NMDS" else "Other"
