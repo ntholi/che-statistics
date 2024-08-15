@@ -8,7 +8,7 @@ from sqlalchemy import Column, Date, Float, Integer, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-from browser import Browser
+from browser import BASE_URL, Browser
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -92,9 +92,7 @@ class WebScraper:
         return students, next_page["href"] if next_page else None
 
     def scrape_transcript(self, student_id):
-        url = (
-            f"{self.browser.url}/Officialreport.php?showmaster=1&StudentID={student_id}"
-        )
+        url = f"{BASE_URL}/Officialreport.php?showmaster=1&StudentID={student_id}"
         response = self.browser.fetch(url)
         soup = BeautifulSoup(response.text, "lxml")
 
@@ -115,7 +113,7 @@ class WebScraper:
         return program, cgpa, academic_year
 
     def scrape_details(self, student_id):
-        url = f"{self.browser.url}/r_stdpersonalview.php?StudentID={student_id}"
+        url = f"{BASE_URL}/r_stdpersonalview.php?StudentID={student_id}"
         response = self.browser.fetch(url)
         soup = BeautifulSoup(response.text, "lxml")
 
@@ -131,7 +129,7 @@ def main():
     scraper = WebScraper()
     session = Session()
 
-    student_list_url = f"{scraper.browser.url}/r_studentviewlist.php"
+    student_list_url = f"{BASE_URL}/r_studentviewlist.php"
 
     while student_list_url:
         students, next_page = scraper.scrape_student_list(student_list_url)
@@ -169,7 +167,7 @@ def main():
             session.commit()
 
         if next_page:
-            student_list_url = urljoin(scraper.browser.url, next_page)
+            student_list_url = urljoin(BASE_URL, next_page)
         else:
             student_list_url = None
 

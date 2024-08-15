@@ -39,7 +39,6 @@ def check_logged_in(html: str) -> bool:
 
 class Browser:
     _instance = None
-    url = f"{BASE_URL}/login.php"
     logged_in = False
     session: requests.Session | None = None
 
@@ -53,8 +52,9 @@ class Browser:
     def login(self):
         logger.info("Logging in...")
         driver = webdriver.Firefox()
-        logger.info(f"Fetching {self.url}")
-        driver.get(self.url)
+        url = f"{BASE_URL}/login.php"
+        logger.info(f"Fetching {url}")
+        driver.get(url)
         WebDriverWait(driver, 60 * 3).until(
             expected_conditions.presence_of_element_located(
                 (By.LINK_TEXT, "[ Logout ]")
