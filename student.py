@@ -37,12 +37,12 @@ class Student(Base):
     fees_registration = Column(Integer, default=1)
     fees_tuition = Column(Float)
     fee_books = Column(Integer, default=1)
-    fee_accommodation = Column(Float)
-    fee_accommodation_actual = Column(Float)
-    fee_meals = Column(Float)
-    fee_meals_actual = Column(Float)
-    fee_lumpsum = Column(Float)
-    fee_lumpsum_actual = Column(Float)
+    fee_accommodation = Column(Float, default=600.00)
+    fee_accommodation_actual = Column(Float, default=600.00)
+    fee_meals = Column(Float, default=1300.00)
+    fee_meals_actual = Column(Float, default=1300.00)
+    fee_lumpsum = Column(Float, default=7400.00)
+    fee_lumpsum_actual = Column(Float, default=7400.00)
 
 
 engine = create_engine("postgresql://dev:111111@localhost/cms")
