@@ -11,10 +11,12 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 from urllib3.exceptions import InsecureRequestWarning
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
-BASE_URL = f"https://cmslesothosandbox.limkokwing.net/campus/registry"
+BASE_URL = "https://cmslesothosandbox.limkokwing.net/campus/registry"
 
 urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -60,7 +62,7 @@ class Browser:
                 (By.LINK_TEXT, "[ Logout ]")
             )
         )
-        logger.info("Logged in")
+        logger.info("Logged in successfully")
 
         selenium_cookies = driver.get_cookies()
         driver.quit()
@@ -76,7 +78,7 @@ class Browser:
         response = self.session.get(url)
         is_logged_in = check_logged_in(response.text)
         if not is_logged_in:
-            logger.info("Not logged in")
+            logger.info("Session expired, logging in again")
             self.login()
             logger.info(f"Logged in, re-fetching {url}")
             response = self.session.get(url)

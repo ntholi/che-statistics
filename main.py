@@ -1,13 +1,8 @@
 import logging
-from dataclasses import dataclass
-from datetime import datetime
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
-from sqlalchemy import Column, Date, Float, Integer, String, create_engine
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 
 from browser import BASE_URL, Browser
 from student import Session, Student
@@ -49,6 +44,8 @@ class WebScraper:
                 }
                 students.append(student)
 
+            logger.info(f"Scraped {len(students)} students from the current page")
+
             next_page = soup.find("a", text="Next")
             return students, next_page["href"] if next_page else None
         except Exception as e:
@@ -61,20 +58,35 @@ class WebScraper:
             response = self.browser.fetch(url)
             soup = BeautifulSoup(response.text, "lxml")
 
-            program = soup.find("td", string="Program:").find_next("td").text.strip()
-            cgpa = (
-                soup.find_all("td", string="Results:")[-1]
-                .find_next("td")
-                .text.split("/")[-1]
-                .strip()
-            )
-            academic_year = int(
-                soup.find("td", string="Semester:")
-                .find_next("td")
-                .text.split(",")[1]
-                .split()[1]
-            )
+            program_td = soup.find("td", string="Program:")
+            if program_td:
+                program = program_td.find_next("td").text.strip()
+            else:
+                logger.warning(
+                    f"Program information not found for student {student_id}"
+                )
+                program = None
 
+            results_td = soup.find_all("td", string="Results:")
+            if results_td:
+                cgpa = results_td[-1].find_next("td").text.split("/")[-1].strip()
+            else:
+                logger.warning(f"CGPA information not found for student {student_id}")
+                cgpa = None
+
+            semester_td = soup.find("td", string="Semester:")
+            if semester_td:
+                semester_text = semester_td.find_next("td").text
+                academic_year = int(semester_text.split(",")[1].split()[1])
+            else:
+                logger.warning(
+                    f"Academic year information not found for student {student_id}"
+                )
+                academic_year = None
+
+            logger.info(
+                f"Scraped transcript for student {student_id}: Program={program}, CGPA={cgpa}, Academic Year={academic_year}"
+            )
             return program, cgpa, academic_year
         except Exception as e:
             logger.error(
@@ -97,6 +109,9 @@ class WebScraper:
                 soup.find("td", string="Birth Place").find_next("td").text.strip()
             )
 
+            logger.info(
+                f"Scraped details for student {student_id}: Nationality={nationality}, Sex={sex}, Birthdate={birthdate}"
+            )
             return nationality, sex, birthdate, birth_place
         except Exception as e:
             logger.error(f"Error scraping details for student {student_id}: {str(e)}")
@@ -108,10 +123,14 @@ def main():
     session = Session()
 
     student_list_url = f"{BASE_URL}/r_studentviewlist.php"
+    page_number = 1
+    total_students_processed = 0
 
     try:
         while student_list_url:
-            logger.info(f"Scraping student list from: {student_list_url}")
+            logger.info(
+                f"Scraping student list from page {page_number}: {student_list_url}"
+            )
             students, next_page = scraper.scrape_student_list(student_list_url)
 
             new_students = []
@@ -147,9 +166,7 @@ def main():
                     duration_of_program=3 if program.startswith("Diploma") else 4,
                     year_of_study=academic_year,
                     student_status=student["student_status"],
-                    overall_exam_mark=int(
-                        float(cgpa) * 20
-                    ),  # Assuming CGPA is out of 5
+                    overall_exam_mark=int(float(cgpa) * 20),
                     graduate_status="Not Graduated",
                 )
                 new_students.append(new_student)
@@ -157,16 +174,22 @@ def main():
             try:
                 session.bulk_save_objects(new_students)
                 session.commit()
-                logger.info(f"Saved {len(new_students)} students to the database")
+                total_students_processed += len(new_students)
+                logger.info(
+                    f"Saved {len(new_students)} students to the database (Total: {total_students_processed})"
+                )
             except SQLAlchemyError as e:
                 session.rollback()
                 logger.error(f"Error saving students to database: {str(e)}")
 
             if next_page:
                 student_list_url = urljoin(BASE_URL, next_page)
+                page_number += 1
             else:
                 student_list_url = None
-                logger.info("Finished scraping all student pages")
+                logger.info(
+                    f"Finished scraping all student pages. Total students processed: {total_students_processed}"
+                )
 
     except Exception as e:
         logger.error(f"An unexpected error occurred: {str(e)}")

@@ -1,28 +1,16 @@
-import logging
-from dataclasses import dataclass
-from datetime import datetime
-from urllib.parse import urljoin
-
-from bs4 import BeautifulSoup
-from sqlalchemy import Column, Date, Float, Integer, String, create_engine
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import Column, Float, Integer, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-# Database setup
-engine = create_engine("postgresql://dev:111111@localhost/cms")
 Base = declarative_base()
-Base.metadata.create_all(engine)
-Session = sessionmaker(bind=engine)
 
 
-@dataclass()
 class Student(Base):
     __tablename__ = "students"
 
     id = Column(Integer, primary_key=True)
     academic_year = Column(Integer)
-    student_number = Column(Integer)
+    student_number = Column(Integer, unique=True)
     first_name = Column(String)
     surname = Column(String)
     date_of_birth = Column(String)
@@ -53,3 +41,8 @@ class Student(Base):
     fee_meals_actual = Column(Float)
     fee_lumpsum = Column(Float)
     fee_lumpsum_actual = Column(Float)
+
+
+engine = create_engine("postgresql://dev:111111@localhost/cms")
+Base.metadata.create_all(engine)
+Session = sessionmaker(bind=engine)
