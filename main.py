@@ -127,6 +127,7 @@ def main():
     student_list_url = f"{BASE_URL}/r_studentviewlist.php"
     page_number = 1
     total_students_processed = 0
+    total_students_saved = 0
 
     try:
         while student_list_url:
@@ -135,7 +136,6 @@ def main():
             )
             students, next_page = scraper.scrape_student_list(student_list_url)
 
-            new_students = []
             for student in students:
                 logger.info(f"Processing student: {student['student_number']}")
                 program, cgpa, academic_year = scraper.scrape_transcript(
@@ -155,6 +155,15 @@ def main():
                 first_name = names[0]
                 surname = " ".join(names[1:])
 
+                try:
+                    cgpa_float = float(cgpa)
+                    overall_exam_mark = int(cgpa_float * 20)
+                except ValueError:
+                    logger.warning(
+                        f"Invalid CGPA value for student {student['student_number']}: {cgpa}"
+                    )
+                    overall_exam_mark = None
+
                 new_student = Student(
                     academic_year=academic_year,
                     student_number=int(student["student_number"]),
@@ -165,24 +174,34 @@ def main():
                     nationality=nationality,
                     faculty=student["school"],
                     program=program,
-                    duration_of_program=3 if program.startswith("Diploma") else 4,
+                    duration_of_program=(
+                        3 if program and program.startswith("Diploma") else 4
+                    ),
                     year_of_study=academic_year,
                     student_status=student["student_status"],
-                    overall_exam_mark=int(float(cgpa) * 20),
+                    overall_exam_mark=overall_exam_mark,
                     graduate_status="Not Graduated",
                 )
-                new_students.append(new_student)
 
-            try:
-                session.bulk_save_objects(new_students)
-                session.commit()
-                total_students_processed += len(new_students)
-                logger.info(
-                    f"Saved {len(new_students)} students to the database (Total: {total_students_processed})"
-                )
-            except SQLAlchemyError as e:
-                session.rollback()
-                logger.error(f"Error saving students to database: {str(e)}")
+                try:
+                    session.add(new_student)
+                    session.commit()
+                    total_students_saved += 1
+                    logger.info(
+                        f"Saved student {student['student_number']} to the database"
+                    )
+                except SQLAlchemyError as e:
+                    session.rollback()
+                    logger.error(
+                        f"Error saving student {student['student_number']} to database: {str(e)}"
+                    )
+
+                total_students_processed += 1
+
+                if total_students_processed % 10 == 0:  # Log progress every 10 students
+                    logger.info(
+                        f"Progress: Processed {total_students_processed} students, Saved {total_students_saved} students"
+                    )
 
             if next_page:
                 student_list_url = urljoin(BASE_URL, next_page)
@@ -190,7 +209,7 @@ def main():
             else:
                 student_list_url = None
                 logger.info(
-                    f"Finished scraping all student pages. Total students processed: {total_students_processed}"
+                    f"Finished scraping all student pages. Total students processed: {total_students_processed}, Total students saved: {total_students_saved}"
                 )
 
     except Exception as e:
