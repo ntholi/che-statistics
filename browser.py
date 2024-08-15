@@ -67,6 +67,9 @@ class Browser:
         selenium_cookies = driver.get_cookies()
         driver.quit()
 
+        if self.session is None:
+            raise ValueError("Session is not initialized")
+
         self.session.cookies.clear()
         for cookie in selenium_cookies:
             self.session.cookies.set(
@@ -74,6 +77,8 @@ class Browser:
             )
 
     def fetch(self, url: str) -> Response:
+        if self.session is None:
+            raise ValueError("Session is not initialized")
         logger.info(f"Fetching {url}")
         response = self.session.get(url)
         is_logged_in = check_logged_in(response.text)
