@@ -119,6 +119,39 @@ class WebScraper:
             logger.error(f"Error scraping details for student {student_id}: {str(e)}")
             return None, None, None, None
 
+    def scrape_sponsor(self, student_id):
+        try:
+            url = f"{BASE_URL}/r_stdprogramlist.php?showmaster=1&StudentID={student_id}"
+            response = self.browser.fetch(url)
+            soup = BeautifulSoup(response.text, "lxml")
+
+            # Find the table row containing the program information
+            program_row = soup.find("tr", class_=["ewTableRow", "ewTableAltRow"])
+
+            if program_row:
+                # The Asst-Provider is the 6th td element in the row
+                cells = program_row.find_all("td")
+                if len(cells) >= 6:
+                    asst_provider = cells[5].text.strip()
+                else:
+                    logger.warning(
+                        f"Asst-Provider information not found in the expected location for student {student_id}"
+                    )
+                    asst_provider = ""  # Default value
+            else:
+                logger.warning(
+                    f"Program information row not found for student {student_id}"
+                )
+                asst_provider = ""  # Default value
+
+            logger.info(
+                f"Scraped sponsor for student {student_id}: Asst-Provider={asst_provider}"
+            )
+            return asst_provider
+        except Exception as e:
+            logger.error(f"Error scraping sponsor for student {student_id}: {str(e)}")
+            return ""  # Default value in case of error
+
 
 def main():
     scraper = WebScraper()
@@ -144,8 +177,19 @@ def main():
                 nationality, sex, birthdate, birth_place = scraper.scrape_details(
                     student["student_number"]
                 )
+                asst_provider = scraper.scrape_sponsor(student["student_number"])
 
-                if not all([program, cgpa, academic_year, nationality, sex, birthdate]):
+                if not all(
+                    [
+                        program,
+                        cgpa,
+                        academic_year,
+                        nationality,
+                        sex,
+                        birthdate,
+                        asst_provider,
+                    ]
+                ):
                     logger.warning(
                         f"Incomplete data for student {student['student_number']}, skipping"
                     )
@@ -181,6 +225,10 @@ def main():
                     student_status=student["student_status"],
                     overall_exam_mark=overall_exam_mark,
                     graduate_status="Not Graduated",
+                    type_of_main_sponsor=(
+                        "NMDS" if asst_provider == "Government" else "Other"
+                    ),
+                    name_of_main_sponsor=asst_provider,
                 )
 
                 try:
