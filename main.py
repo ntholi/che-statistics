@@ -242,7 +242,7 @@ def main():
                     session.commit()
                     total_students_saved += 1
                     logger.info(
-                        f"Saved student {student['student_number']} to the database"
+                        f"{total_students_saved}) Saved student {student['student_number']} to the database"
                     )
                 except SQLAlchemyError as e:
                     session.rollback()
