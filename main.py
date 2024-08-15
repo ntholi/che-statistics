@@ -69,7 +69,8 @@ class WebScraper:
 
             results_td = soup.find_all("td", string="Results:")
             if results_td:
-                cgpa = results_td[-1].find_next("td").text.split("/")[-1].strip()
+                cgpa_text = results_td[-1].find_next("td").text.strip()
+                cgpa = cgpa_text.split(":")[-1].strip()
             else:
                 logger.warning(f"CGPA information not found for student {student_id}")
                 cgpa = None
