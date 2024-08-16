@@ -59,32 +59,21 @@ class WebScraper:
             soup = BeautifulSoup(response.text, "lxml")
 
             program_td = soup.find("td", string="Program:")
-            if program_td:
-                program = program_td.find_next("td").text.strip()
-            else:
-                logger.warning(
-                    f"Program information not found for student {student_id}"
-                )
-                program = None
+            program = program_td.find_next("td").text.strip() if program_td else None
 
             results_td = soup.find_all("td", string="Results:")
-            if results_td:
-                cgpa_text = results_td[-1].find_next("td").text.strip()
-                cgpa = cgpa_text.split(":")[-1].strip()
-            else:
-                logger.warning(f"CGPA information not found for student {student_id}")
-                cgpa = None
+            cgpa = (
+                results_td[-1].find_next("td").text.strip().split(":")[-1].strip()
+                if results_td
+                else None
+            )
 
             semester_tds = soup.find_all("td", string="Semester:")
-            if semester_tds:
-                last_semester_td = semester_tds[-1]
-                semester_text = last_semester_td.find_next("td").text
-                academic_year = int(semester_text.split(",")[1].split()[1])
-            else:
-                logger.warning(
-                    f"Academic year information not found for student {student_id}"
-                )
-                academic_year = None
+            academic_year = (
+                int(semester_tds[-1].find_next("td").text.split(",")[1].split()[1])
+                if semester_tds
+                else None
+            )
 
             logger.info(
                 f"Scraped transcript for student {student_id}: Program={program}, CGPA={cgpa}, Academic Year={academic_year}"
@@ -93,6 +82,48 @@ class WebScraper:
         except Exception as e:
             logger.error(
                 f"Error scraping transcript for student {student_id}: {str(e)}"
+            )
+            return None, None, None
+
+    def scrape_program_list(self, student_id):
+        try:
+            url = f"{BASE_URL}/r_stdprogramlist.php?showmaster=1&StudentID={student_id}"
+            response = self.browser.fetch(url)
+            soup = BeautifulSoup(response.text, "lxml")
+
+            program_row = soup.find("tr", class_=["ewTableRow", "ewTableAltRow"])
+
+            if program_row:
+                cells = program_row.find_all("td")
+                if len(cells) >= 3:
+                    program = cells[0].text.strip()
+                    academic_year = cells[1].text.strip()
+
+                    academic_year = int(
+                        academic_year.split("-")[0]
+                    )  # Adjust base year as needed
+
+                    logger.info(
+                        f"Scraped program list for student {student_id}: Program={program}, Academic Year={academic_year}"
+                    )
+                    return (
+                        program,
+                        "-1",
+                        academic_year,
+                    )  # Return -1 for CGPA as specified
+                else:
+                    logger.warning(
+                        f"Insufficient data in program row for student {student_id}"
+                    )
+            else:
+                logger.warning(
+                    f"Program information row not found for student {student_id}"
+                )
+
+            return None, None, None
+        except Exception as e:
+            logger.error(
+                f"Error scraping program list for student {student_id}: {str(e)}"
             )
             return None, None, None
 
@@ -125,24 +156,16 @@ class WebScraper:
             response = self.browser.fetch(url)
             soup = BeautifulSoup(response.text, "lxml")
 
-            # Find the table row containing the program information
             program_row = soup.find("tr", class_=["ewTableRow", "ewTableAltRow"])
 
             if program_row:
-                # The Asst-Provider is the 6th td element in the row
                 cells = program_row.find_all("td")
-                if len(cells) >= 6:
-                    asst_provider = cells[5].text.strip()
-                else:
-                    logger.warning(
-                        f"Asst-Provider information not found in the expected location for student {student_id}"
-                    )
-                    asst_provider = ""  # Default value
+                asst_provider = cells[5].text.strip() if len(cells) >= 6 else ""
             else:
                 logger.warning(
                     f"Program information row not found for student {student_id}"
                 )
-                asst_provider = ""  # Default value
+                asst_provider = ""
 
             logger.info(
                 f"Scraped sponsor for student {student_id}: Asst-Provider={asst_provider}"
@@ -150,7 +173,7 @@ class WebScraper:
             return asst_provider
         except Exception as e:
             logger.error(f"Error scraping sponsor for student {student_id}: {str(e)}")
-            return ""  # Default value in case of error
+            return ""
 
 
 def get_faculty_or_school(code):
@@ -187,22 +210,92 @@ def get_qualification(program: str):
 
 def get_student_status(program: str, year_of_study: int):
     program_duration = get_duration_of_program(program)
-    if year_of_study == program_duration:
-        return "Completer"
-    return "Continuing Student"
+    return "Completer" if year_of_study == program_duration else "Continuing Student"
 
 
 def get_tuition_fee(qualification: int, year_of_study: int):
-    if qualification == 1 and year_of_study == 1:
-        return 12000
-    elif qualification == 2 and year_of_study == 1:
-        return 19475
-    elif qualification == 2 and year_of_study >= 2:
-        return 19988
-    elif qualification == 3 and year_of_study == 1:
-        return 19988
-    elif qualification == 3 and year_of_study >= 2:
-        return 25625
+    fee_map = {
+        (1, 1): 12000,
+        (2, 1): 19475,
+        (2, 2): 19988,
+        (3, 1): 19988,
+    }
+    return fee_map.get((qualification, year_of_study), 25625)
+
+
+def process_student(scraper, student, session):
+    try:
+        student_number = student["student_number"]
+        exists = session.query(Student).get(student_number)
+        if exists:
+            logger.warning(
+                f"Student {student_number} already exists in the database, skipping"
+            )
+            return False
+
+        program, cgpa, academic_year = scraper.scrape_transcript(student_number)
+
+        if not all([program, cgpa, academic_year]):
+            logger.info(
+                f"Transcript data not found for student {student_number}, using fallback method"
+            )
+            program, cgpa, academic_year = scraper.scrape_program_list(student_number)
+
+        nationality, sex, birthdate, birth_place = scraper.scrape_details(
+            student_number
+        )
+        asst_provider = scraper.scrape_sponsor(student_number)
+
+        if not all([program, cgpa, academic_year, sex, birthdate]):
+            logger.warning(f"Incomplete data for student {student_number}, skipping")
+            return False
+
+        names = student["name"].split()
+        surname = names[-1]
+        first_name = " ".join(names[:-1])
+
+        try:
+            cgpa_float = float(cgpa)
+            overall_exam_mark = int(cgpa_float * 25)
+        except ValueError:
+            logger.warning(f"Invalid CGPA value for student {student_number}: {cgpa}")
+            overall_exam_mark = None
+
+        qualification = get_qualification(program)
+        new_student = Student(
+            student_number=int(student_number),
+            academic_year="2023/2024",
+            first_name=first_name,
+            surname=surname,
+            date_of_birth=birthdate,
+            gender=sex,
+            nationality=nationality or "Unknown",
+            faculty_or_school=get_faculty_or_school(student["school"]),
+            program=program,
+            duration_on_program=get_duration_of_program(program),
+            year_of_study=academic_year,
+            qualification=qualification,
+            student_status=get_student_status(program, academic_year),
+            overall_exam_mark=overall_exam_mark,
+            graduate_status=(
+                "Passed" if overall_exam_mark and overall_exam_mark >= 50 else "Failed"
+            ),
+            fees_tuition=get_tuition_fee(qualification, academic_year),
+            type_of_main_sponsor="Government" if asst_provider == "NMDS" else "Other",
+            name_of_main_sponsor=asst_provider or "Unknown",
+        )
+
+        session.add(new_student)
+        session.commit()
+        logger.info(f"Saved student {student_number} to the database")
+        return True
+    except SQLAlchemyError as e:
+        session.rollback()
+        logger.error(f"Error saving student {student_number} to database: {str(e)}")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error processing student {student_number}: {str(e)}")
+        return False
 
 
 def main():
@@ -210,7 +303,6 @@ def main():
     scraper.browser.login()
     session = Session()
 
-    # Filter:
     scraper.browser.fetch(
         "https://cmslesothosandbox.limkokwing.net/campus/registry/r_studentviewlist.php?x_InstitutionID=1&z_InstitutionID=%3D%2C%2C&x_LatestTerm=2022-08&z_LatestTerm=LIKE%2C%27%25%2C%25%27"
     )
@@ -228,96 +320,11 @@ def main():
             students, next_page = scraper.scrape_student_list(student_list_url)
 
             for student in students:
-                logger.info(f"Processing student: {student['student_number']}")
-                program, cgpa, academic_year = scraper.scrape_transcript(
-                    student["student_number"]
-                )
-                nationality, sex, birthdate, birth_place = scraper.scrape_details(
-                    student["student_number"]
-                )
-                asst_provider = scraper.scrape_sponsor(student["student_number"])
-
-                if not all(
-                    [
-                        program,
-                        cgpa,
-                        academic_year,
-                        nationality,
-                        sex,
-                        birthdate,
-                        asst_provider,
-                    ]
-                ):
-                    logger.warning(
-                        f"Incomplete data for student {student['student_number']}, skipping"
-                    )
-                    continue
-
-                names = student["name"].split()
-                reversed_names = names[::-1]
-                surname = reversed_names[0]
-                first_name = " ".join(reversed_names[1:])
-
-                try:
-                    cgpa_float = float(cgpa)
-                    overall_exam_mark = int(cgpa_float * 25)
-                except ValueError:
-                    logger.warning(
-                        f"Invalid CGPA value for student {student['student_number']}: {cgpa}"
-                    )
-                    overall_exam_mark = None
-
-                new_student = Student(
-                    student_number=int(student["student_number"]),
-                    academic_year="2023/2024",
-                    first_name=first_name,
-                    surname=surname,
-                    date_of_birth=birthdate,
-                    gender=sex,
-                    nationality=nationality,
-                    faculty_or_school=get_faculty_or_school(student["school"]),
-                    program=program,
-                    duration_on_program=get_duration_of_program(program),
-                    year_of_study=academic_year,
-                    qualification=get_qualification(program),
-                    student_status=get_student_status(program, academic_year),
-                    overall_exam_mark=overall_exam_mark,
-                    graduate_status=(
-                        "Passed"
-                        if overall_exam_mark and overall_exam_mark >= 50
-                        else "Failed"
-                    ),
-                    fees_tuition=get_tuition_fee(
-                        get_qualification(program), academic_year
-                    ),
-                    type_of_main_sponsor=(
-                        "Government" if asst_provider == "NMDS" else "Other"
-                    ),
-                    name_of_main_sponsor=asst_provider,
-                )
-
-                try:
-                    exists = session.query(Student).get(new_student.student_number)
-                    if exists:
-                        logger.warning(
-                            f"{total_students_saved}) Student {student['student_number']} already exists in the database, skipping"
-                        )
-                        continue
-                    session.add(new_student)
-                    session.commit()
+                if process_student(scraper, student, session):
                     total_students_saved += 1
-                    logger.info(
-                        f"{total_students_saved}) Saved student {student['student_number']} to the database"
-                    )
-                except SQLAlchemyError as e:
-                    session.rollback()
-                    logger.error(
-                        f"{total_students_saved}) Error saving student {student['student_number']} to database: {str(e)}"
-                    )
-
                 total_students_processed += 1
 
-                if total_students_processed % 10 == 0:  # Log progress every 10 students
+                if total_students_processed % 10 == 0:
                     logger.info(
                         f"Progress: Processed {total_students_processed} students, Saved {total_students_saved} students"
                     )
