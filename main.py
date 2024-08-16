@@ -91,35 +91,27 @@ class WebScraper:
             response = self.browser.fetch(url)
             soup = BeautifulSoup(response.text, "lxml")
 
-            program_row = soup.find("tr", class_=["ewTableRow", "ewTableAltRow"])
+            rows = soup.find_all("tr", class_=["ewTableRow", "ewTableAltRow"])
 
-            if program_row:
-                cells = program_row.find_all("td")
-                if len(cells) >= 3:
-                    program = cells[0].text.strip()
+            for row in rows:
+                cells = row.find_all("td")
+                if len(cells) >= 6 and cells[4].text.strip() == "Active":
+                    program = cells[0].text.strip().split(" ")
+                    program = " ".join(program[1:]).strip()
                     academic_year = cells[1].text.strip()
 
-                    academic_year = int(
-                        academic_year.split("-")[0]
-                    )  # Adjust base year as needed
+                    academic_year = int(academic_year.split("-")[0])
 
                     logger.info(
-                        f"Scraped program list for student {student_id}: Program={program}, Academic Year={academic_year}"
+                        f"Scraped active program for student {student_id}: Program={program}, Academic Year={academic_year}"
                     )
                     return (
                         program,
                         "-1",
-                        academic_year,
-                    )  # Return -1 for CGPA as specified
-                else:
-                    logger.warning(
-                        f"Insufficient data in program row for student {student_id}"
+                        1,
                     )
-            else:
-                logger.warning(
-                    f"Program information row not found for student {student_id}"
-                )
 
+            logger.warning(f"No active program found for student {student_id}")
             return None, None, None
         except Exception as e:
             logger.error(
@@ -256,7 +248,10 @@ def process_student(scraper, student, session):
 
         try:
             cgpa_float = float(cgpa)
-            overall_exam_mark = int(cgpa_float * 25)
+            if cgpa_float < 0:
+                overall_exam_mark = 999
+            else:
+                overall_exam_mark = int(cgpa_float * 25)
         except ValueError:
             logger.warning(f"Invalid CGPA value for student {student_number}: {cgpa}")
             overall_exam_mark = None
